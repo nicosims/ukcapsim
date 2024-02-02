@@ -1,0 +1,96 @@
+invdata<-read.csv("/RIVEXUKA.csv")
+#https://fred.stlouisfed.org/series/RIVEXUKA
+d<-10
+##length of depreciation schedule 
+
+capStock<-matrix(data = 0, nrow = d, ncol = 2)
+estCC<-matrix(nrow = length(invdata[,1]), ncol = 2)
+csTemp<-matrix(nrow = d)
+for (d1 in (d:1))
+{
+  csTemp[d1]<-d1*(9000/sum(d:1))
+}
+capStock[,1]<-sort(csTemp, decreasing = TRUE)
+capStock[,2]<-sort(csTemp, decreasing = TRUE)
+t<-1
+capStock 
+
+while (t<=length(invdata[,1]))
+{
+  estCC[t,1]<- capStock[1,1]
+  estCC[t,2]<- capStock[1,2]
+  capStock[,1]<-c(capStock[2:d,1],0 )
+  capStock[,2]<-c(capStock[2:d,2],0 )
+  dp1<-1
+  dtemp<-0
+  for (dep in capStock[,1])
+  {
+    if (dp1<d)
+    {
+      capStock[dp1,1]<-dep+round(((2*(invdata[t,2]-dtemp))/d), digits = 3);
+      dtemp<-dtemp+round(((2*(invdata[t,2]-dtemp))/d), digits = 3);
+      dp1<-dp1+1;
+    }
+    else
+    {
+      capStock[dp1,1]<-dep+round((invdata[t,2]-dtemp), digits = 3)
+    }
+  }
+  capStock[,2]<-round(capStock[,2]+(invdata[t,2]/d), digits = 3);
+  t<-t+1
+}
+tsCC<-ts(data= invdata[,2], start=1830, end = 2016, frequency = 1)
+tsestCC1<-ts(data= estCC[,1], start=1830, end = 2016, frequency = 1)
+tsestCC2<-ts(data= estCC[,2], start=1830, end = 2016, frequency = 1)
+
+capitalest<-cbind(tsestCC1, tsestCC2)
+write.csv(capitalest, "capitalest1.csv")
+
+tsRatio1<-tsestCC1/tsCC
+tsRatio2<-tsestCC2/tsCC
+
+plot(tsCC, ylab = "Millions of Chained 2013 British Pounds", main = "UK Capital Consumption Estimates")
+lines(tsestCC1, col = "red")
+lines(tsestCC2, col = "blue")
+legend("topleft", legend = c("Real Investment", "Double Declining Balance Depreciation Est", "Normal Depreciation Estimate"), col = c("black", "red", "blue"), lty = 1, cex = 0.8)
+
+plot(tsCC, log ="xy", ylab = "Millions of Chained 2013 British Pounds, Log Scale", main = "UK Capital Consumption Estimates")
+lines(tsestCC1, col = "red")
+lines(tsestCC2, col = "blue")
+legend("topleft", legend = c("Real Investment", "Double Declining Balance Depreciation Est", "Normal Depreciation Estimate"), col = c("black", "red", "blue"), lty = 1, cex = 0.8)
+
+plot(log(tsRatio1), main = "UK Ratio of Capital Consumption and Investment", ylab ="",  xaxp = round(c(1830,
+                                                                                                 2016,
+                                                                                                 20)))
+lines(log(tsRatio2), col = "red")
+grid(nx= NULL , ny=NULL, col = "gray", lty = "dotted", equilogs = FALSE)
+legend("topleft", legend = c( "Double Declining Balance Depreciation Est", "Normal Depreciation Estimate"), col = c("black", "red"), lty = 1, cex = 0.8)
+
+m1<-mean(log(tsRatio1))
+m2<-mean(log(tsRatio2))
+sd1<-sd(log(tsRatio1))
+sd2<-sd(log(tsRatio2))
+
+hist(log(tsRatio1), probability = TRUE)
+curve(dnorm(x, mean = m1, sd = sd1), add = TRUE, col = "blue", lwd = 2, from = min(log(tsRatio1)), to = max(log(tsRatio1)))
+abline(v = m1, col = "red", lwd = 2, lty = 2)
+hist(log(tsRatio2), probability = TRUE)
+curve(dnorm(x, mean = m2, sd = sd2), add = TRUE, col = "blue", lwd = 2, from = min(log(tsRatio2)), to = max(log(tsRatio2)))
+abline(v = m2, col = "red", lwd = 2, lty = 2)
+
+isocodes1<-cbind(ISO_3166_1[,2], ISO_3166_1[,4])
+write.csv(isocodes1,"isodecoder.csv" )
+
+cumAvg1<-ts(data=cumsum(tsRatio1)/1:length(tsRatio1), start=1830, end = 2016, frequency = 1)
+plot(cumAvg1, ylim = c(.9,1.4), main = "Cumulative Average DDBD Ratio of UK Capital Consumption and Investment", ylab = "")
+grid(nx= NULL , ny=NULL, col = "gray", lty = "dotted", equilogs = FALSE)
+avg1<-ts(data=matrix(data = mean(tsRatio1), nrow =length(tsRatio1) ), start=1830, end = 2016, frequency = 1)
+lines(avg1, col = "blue")
+legend("topright", legend = c( "Cumulative Average", "Average: 0.93"), col = c("black", "blue"), lty = 1, cex = 0.8)
+
+cumAvg2<-ts(data=cumsum(tsRatio2)/1:length(tsRatio2), start=1830, end = 2016, frequency = 1)
+plot(cumAvg2, ylim = c(.9,1.4), main = "Cumulative Average Ratio of UK Capital Consumption and Investment", ylab = "")
+grid(nx= NULL , ny=NULL, col = "gray", lty = "dotted", equilogs = FALSE)
+avg2<-ts(data=matrix(data = mean(tsRatio2), nrow =length(tsRatio2) ), start=1830, end = 2016, frequency = 1)
+lines(avg2, col = "blue")
+legend("topright", legend = c( "Cumulative Average", "Average: 0.91"), col = c("black", "blue"), lty = 1, cex = 0.8)
